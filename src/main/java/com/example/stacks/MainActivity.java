@@ -3,6 +3,7 @@ package com.example.stacks;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -19,6 +20,7 @@ import android.provider.MediaStore;
 import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.util.Log;
@@ -135,30 +137,47 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 int check_position = detectedTextListView.getCheckedItemPosition();   //리스트뷰의 포지션을 가져옴.
                 final String selected_item = (String)adapterView.getAdapter().getItem(position);  //리스트뷰의 포지션 내용을 가져옴.
-                runOnUiThread(new Runnable() {
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle(selected_item);
+                builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
-                    public void run() {
-                        try{
-                            URL url = new URL(SERVER_ADDRESS + "/insert.php?"
-                                    + "english="+ URLEncoder.encode(selected_item,"UTF-8"));
-                            url.openStream();
-                            String result =getXmlData("insertresult.xml","result");
-                            if(result.equals("1"))
-                            {
-                                Toast.makeText(MainActivity.this,
-                                        "DB insert 성공", Toast.LENGTH_SHORT).show();
+                    public void onClick(DialogInterface dialog, int which) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try{
+                                    URL url = new URL(SERVER_ADDRESS + "/insert.php?"
+                                            + "english="+ URLEncoder.encode(selected_item,"UTF-8"));
+                                    url.openStream();
+                                    String result =getXmlData("insertresult.xml","result");
+                                    if(result.equals("1"))
+                                    {
+                                        Toast.makeText(MainActivity.this,
+                                                "DB insert 성공", Toast.LENGTH_SHORT).show();
+                                    }
+                                    else
+                                    {
+                                        //Toast.makeText(MainActivity.this,
+                                        //      "DB insert 실패", Toast.LENGTH_SHORT).show();
+                                    }
+                                }catch(Exception e){
+                                    Log.e("Error", e.getMessage());
+                                }
+
                             }
-                            else
-                            {
-                                //Toast.makeText(MainActivity.this,
-                                  //      "DB insert 실패", Toast.LENGTH_SHORT).show();
-                            }
-                        }catch(Exception e){
-                            Log.e("Error", e.getMessage());
-                        }
+                        });
+                    }
+                });
+                builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "NO Button Click", Toast.LENGTH_SHORT).show();
 
                     }
                 });
+                AlertDialog alert = builder.create();
+                alert.show();
                 //makeFile(selected_item);
                 Toast.makeText(getApplicationContext(), "검출 파일 생성완료"+selected_item, Toast.LENGTH_LONG).show();
             }
