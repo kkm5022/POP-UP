@@ -34,6 +34,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -48,16 +49,17 @@ import com.amazonaws.util.IOUtils;
 import com.example.stacks.aws.S3Uploader;
 import com.example.stacks.aws.S3Utils;
 
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserFactory;
-
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -65,13 +67,14 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int SELECT_PICTURE = 1;
+    private static final int REQUEST_CODE_DICT= 1001;
     public static String IMAGE_FILE = "capture.jpg";
     private Button detect;
     private Button saveBtn;
     //php서버 ip
     private final String SERVER_ADDRESS = "http://13.209.67.88";
     private Camera camera =  null;
-
+    private ScrollView scrollView;
     private ListView detectedTextListView;
     private ArrayAdapter<String> arrayAdapter;
     private File resultFile;
@@ -94,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
             com.google.cloud.translate.Translate.TranslateOption.targetLanguage("ko"));
       System.out.printf("Text: %s%n", text);
       System.out.printf("Translation: %s%n", translation.getTranslatedText());
-*/
+    */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,42 +134,31 @@ public class MainActivity extends AppCompatActivity {
 //                Toast.makeText(getApplicationContext(), "업로드 중", Toast.LENGTH_LONG).show();
 //            }
 //        });
-
         detectedTextListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 int check_position = detectedTextListView.getCheckedItemPosition();   //리스트뷰의 포지션을 가져옴.
                 final String selected_item = (String)adapterView.getAdapter().getItem(position);  //리스트뷰의 포지션 내용을 가져옴.
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
                 builder.setTitle(selected_item);
                 builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                try{
-                                    URL url = new URL(SERVER_ADDRESS + "/insert.php?"
-                                            + "english="+ URLEncoder.encode(selected_item,"UTF-8"));
-                                    url.openStream();
-                                    String result =getXmlData("insertresult.xml","result");
-                                    if(result.equals("1"))
-                                    {
-                                        Toast.makeText(MainActivity.this,
-                                                "DB insert 성공", Toast.LENGTH_SHORT).show();
-                                    }
-                                    else
-                                    {
-                                        //Toast.makeText(MainActivity.this,
-                                        //      "DB insert 실패", Toast.LENGTH_SHORT).show();
-                                    }
-                                }catch(Exception e){
-                                    Log.e("Error", e.getMessage());
-                                }
+                        insertToDatabase(selected_item);
+                        //runOnUiThread(new Runnable() {
+                        //    @Override
+                        //    public void run() {
+                        //        try{
+                                    //URL url = new URL(SERVER_ADDRESS + "/insert.php?"
+                                    //       + "english="+ URLEncoder.encode(selected_item,"UTF-8"));
+                                    //url.openStream();
+                                    //String result =getXmlData("insertresult.xml","result");
+                        //        }catch(Exception e){
+                        //            Log.e("Error", e.getMessage());
+                        //        }
 
-                            }
-                        });
+                        //    }
+                        //});
                     }
                 });
                 builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
@@ -233,38 +225,74 @@ public class MainActivity extends AppCompatActivity {
                     });
                 }
             });
+
             saveBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    cameraView.capture(new Camera.PictureCallback() {
-                        public void onPictureTaken(byte[] data, Camera camera) {
-                            try {
-                                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                                String outUriStr = MediaStore.Images.Media.insertImage(
-                                        getContentResolver(),
-                                        bitmap,
-                                        "caputred Image", "Caputred Image using Camera.");
-                                if (outUriStr == null) {
-                                    Log.d("SampleCapture", "Image insert failed");
-                                    return;
-                                } else {
-                                    Uri outUri = Uri.parse(outUriStr);
-                                    sendBroadcast(new Intent(
-                                            Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, outUri));
-                                }
-                                Toast.makeText(getApplicationContext(),"카메라로 찍은 사진을 앨범에 저장했습니다.",Toast.LENGTH_SHORT).show();
-                                camera.stopPreview();
-                                //camera.startPreview();
-                            } catch (Exception e) {
-                                Log.e("SampleCapture", "Failed to insert image", e);
-                            }
-                        }
-                    });
+                    Intent intent = new Intent(MainActivity.this, DictionaryActivity.class);
+                    startActivity(intent);
                 }
             });
+
         }
     }
+    private void insertToDatabase(String english){
+        class InsertData extends AsyncTask<String, Void, String>{
+            ProgressDialog loading;
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                loading = ProgressDialog.show(MainActivity.this, "Please Wait", null, true, true);
+            }
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                loading.dismiss();
+                Toast.makeText(getApplicationContext(),s,Toast.LENGTH_LONG).show();
+            }
+            @Override
+            protected String doInBackground(String... params) {
+                try{
+                    String english = (String)params[0];
 
+                    String link=SERVER_ADDRESS+"/insert.php";
+
+                    String data  = URLEncoder.encode("english", "UTF-8") + "=" + URLEncoder.encode(english, "UTF-8");
+                   // data += "&" + URLEncoder.encode("address", "UTF-8") + "=" + URLEncoder.encode(address, "UTF-8");
+
+                    URL url = new URL(link);
+                    URLConnection conn = url.openConnection();
+
+                    conn.setDoOutput(true);
+                    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+                    wr.write( data );
+                    wr.flush();
+
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+                    StringBuilder sb = new StringBuilder();
+
+                    String line = null;
+
+                    // Read Server Response
+
+                    while((line = reader.readLine()) != null)
+                    {
+                        sb.append(line);
+                        break;
+                    }
+                    return sb.toString();
+                }
+
+                catch(Exception e){
+                    return new String("Exception: " + e.getMessage());
+                }
+            }
+
+        }
+        InsertData task = new InsertData();
+        task.execute(english);
+    }
 
     @Override
     protected void onStart() {
@@ -329,7 +357,13 @@ public class MainActivity extends AppCompatActivity {
                 }
 
             }
+            if(requestCode == REQUEST_CODE_DICT){
+                Toast toast = Toast.makeText(getBaseContext(),
+                        "onActivity결과가 호출됨. 요청코드 : "+ requestCode + ",결과코드 : "+resultCode,Toast.LENGTH_LONG);
+                toast.show();
+            }
         }
+
     }
 
     //텍스트 검출
@@ -545,34 +579,6 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         }
-    }
-
-    private String getXmlData(String filename, String str) {
-        String rss = SERVER_ADDRESS + "/";
-        String ret = "";
-        try { //XML 파싱을 위한 과정
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            factory.setNamespaceAware(true);
-            XmlPullParser xpp = factory.newPullParser();
-            URL server = new URL(rss + filename);
-            InputStream is = server.openStream();
-            xpp.setInput(is, "UTF-8");
-
-            int eventType = xpp.getEventType();
-
-            while(eventType != XmlPullParser.END_DOCUMENT) {
-                if(eventType == XmlPullParser.START_TAG) {
-                    if(xpp.getName().equals(str)) { //태그 이름이 str 인자값과 같은 경우
-                        ret = xpp.nextText();
-                    }
-                }
-                eventType = xpp.next();
-            }
-        } catch(Exception e) {
-            Log.e("Error", e.getMessage());
-        }
-
-        return ret;
     }
 }
 

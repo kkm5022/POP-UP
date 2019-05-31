@@ -7,13 +7,15 @@
     tools:context=".MainActivity">
 
     <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_marginStart="0dp"
-        android:layout_marginTop="0dp">
-
+        android:layout_marginTop="0dp"
+        android:fillViewport = "true"
+        >
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -67,10 +69,8 @@
 
             <ListView
                 android:id="@+id/detectedTextListView"
-                android:layout_width="399dp"
-                android:layout_height="1050dp"
-                android:layout_alignParentStart="true"
-                android:layout_marginTop="54dp" />
+                android:layout_width="match_parent"
+                android:layout_height="921dp" />
         </LinearLayout>
     </ScrollView>
 
