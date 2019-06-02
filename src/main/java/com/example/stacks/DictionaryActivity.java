@@ -2,11 +2,21 @@ package com.example.stacks;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -20,6 +30,7 @@ public class DictionaryActivity extends Activity {
     private ListView listView;
     private ArrayList<String> Items;
     private ArrayAdapter<String> adapter;
+    private JSONArray mArray;
 
     @Override
     public void onCreate(Bundle savedInstanceState){
@@ -29,7 +40,37 @@ public class DictionaryActivity extends Activity {
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         selectToDatabase();
 
+        listView = (ListView) findViewById(R.id.ListView);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                int check_position = listView.getCheckedItemPosition();   //리스트뷰의 포지션을 가져옴.
+                final String selected_item = (String)adapterView.getAdapter().getItem(position);  //리스트뷰의 포지션 내용을 가져옴.
+                AlertDialog.Builder builder = new AlertDialog.Builder(DictionaryActivity.this);
+                builder.setTitle(selected_item + "를 삭제하시겠습니까?");
+                builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "아직 안만들었엉~!", Toast.LENGTH_SHORT).show();
+
+                    }
+                });
+                builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(getApplicationContext(), "NO Button Click", Toast.LENGTH_SHORT).show();
+
+                    }
+                });
+                AlertDialog alert = builder.create();
+                alert.show();
+            }
+
+        });
+
     }
+
 
     private void selectToDatabase() {
         class selectData extends AsyncTask<String, Void, String> {
@@ -48,15 +89,18 @@ public class DictionaryActivity extends Activity {
                 super.onPostExecute(result);
                 loading.dismiss();
                 Items = new ArrayList<String>();
-//                String english = "\"korean\":\"";
-//                String korean = "\"\",";
-//                int start= result.indexOf(english);
-//                int end =result.indexOf(korean);
-//                while(result != null) {
-//                    String print = result.substring(start + english.length(), end);
-//                    Items.add(print);
-//                }
-                Items.add(result);
+                try{
+                    JSONParser jsonParser = new JSONParser();
+                    JSONObject jsonObj= (JSONObject)jsonParser.parse(result);
+                    JSONArray ja = (JSONArray)jsonObj.get("response");
+                    for(int i=0; i<ja.size(); i++) {
+                        JSONObject jo = (JSONObject)ja.get(i);
+                        Items.add("영어 : "+jo.get("english")+"   한국어:"+ jo.get("korean"));
+                    }
+
+                }catch(ParseException e){
+                    e.printStackTrace();
+                }
                 adapter = new ArrayAdapter<String>(getApplicationContext(), android.R.layout.simple_list_item_1, Items);
                 listView = (ListView)findViewById(R.id.ListView);
                 listView.setAdapter(adapter);

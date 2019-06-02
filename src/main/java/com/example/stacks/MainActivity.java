@@ -48,6 +48,9 @@ import com.amazonaws.services.rekognition.model.TextDetection;
 import com.amazonaws.util.IOUtils;
 import com.example.stacks.aws.S3Uploader;
 import com.example.stacks.aws.S3Utils;
+import com.google.cloud.translate.Translate;
+import com.google.cloud.translate.TranslateOptions;
+import com.google.cloud.translate.Translation;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -64,6 +67,7 @@ import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class MainActivity extends AppCompatActivity {
     private static final int SELECT_PICTURE = 1;
@@ -86,18 +90,8 @@ public class MainActivity extends AppCompatActivity {
     ImageView ivSelectedImage;
     String imagePATH;
     File savefile;
+    private static final String API_KEY = "AIzaSyAZKcZ0yPJOj_vQxZDTaapBizy8SJBhqK8";
 
-    /*
-    String API_KEY = "AIzaSyCKZsHeSUaqMz8lgwDZWmvElzaDPMhHrXs";
-    Translate translate = TranslateOptions.newBuilder().setApiKey(API_KEY).build().getService();
-
-    String text = "You are best?";
-
-    Translation translation = translate.translate(text, com.google.cloud.translate.Translate.TranslateOption.sourceLanguage("en"),
-            com.google.cloud.translate.Translate.TranslateOption.targetLanguage("ko"));
-      System.out.printf("Text: %s%n", text);
-      System.out.printf("Translation: %s%n", translation.getTranslatedText());
-    */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,39 +120,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //upload.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                S3IntentTask s3 =new S3IntentTask();
-//                s3.execute(imagePATH);
-//                Toast.makeText(getApplicationContext(), "업로드 중", Toast.LENGTH_LONG).show();
-//            }
-//        });
         detectedTextListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
                 int check_position = detectedTextListView.getCheckedItemPosition();   //리스트뷰의 포지션을 가져옴.
                 final String selected_item = (String)adapterView.getAdapter().getItem(position);  //리스트뷰의 포지션 내용을 가져옴.
+                //번역
+                TranslateOptions options = TranslateOptions.newBuilder()
+                        .setApiKey(API_KEY)
+                        .build();
+                Translate translate = options.getService();
+                final Translation translation =
+                        translate.translate(selected_item, Translate.TranslateOption.targetLanguage("ko"));
+
+
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setTitle(selected_item);
+                builder.setTitle(selected_item+"   "+translation.getTranslatedText());
                 builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        insertToDatabase(selected_item);
-                        //runOnUiThread(new Runnable() {
-                        //    @Override
-                        //    public void run() {
-                        //        try{
-                                    //URL url = new URL(SERVER_ADDRESS + "/insert.php?"
-                                    //       + "english="+ URLEncoder.encode(selected_item,"UTF-8"));
-                                    //url.openStream();
-                                    //String result =getXmlData("insertresult.xml","result");
-                        //        }catch(Exception e){
-                        //            Log.e("Error", e.getMessage());
-                        //        }
-
-                        //    }
-                        //});
+                        insertToDatabase(selected_item.trim(), translation.getTranslatedText());
                     }
                 });
                 builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
@@ -170,9 +151,7 @@ public class MainActivity extends AppCompatActivity {
                 });
                 AlertDialog alert = builder.create();
                 alert.show();
-                //makeFile(selected_item);
-                Toast.makeText(getApplicationContext(), "검출 파일 생성완료"+selected_item, Toast.LENGTH_LONG).show();
-            }
+                }
 
         });
 
@@ -236,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-    private void insertToDatabase(String english){
+    private void insertToDatabase(String english, String korean){
         class InsertData extends AsyncTask<String, Void, String>{
             ProgressDialog loading;
             @Override
@@ -254,11 +233,12 @@ public class MainActivity extends AppCompatActivity {
             protected String doInBackground(String... params) {
                 try{
                     String english = (String)params[0];
+                    String korean = (String)params[1];
 
                     String link=SERVER_ADDRESS+"/insert.php";
 
                     String data  = URLEncoder.encode("english", "UTF-8") + "=" + URLEncoder.encode(english, "UTF-8");
-                   // data += "&" + URLEncoder.encode("address", "UTF-8") + "=" + URLEncoder.encode(address, "UTF-8");
+                    data += "&" + URLEncoder.encode("korean", "UTF-8") + "=" + URLEncoder.encode(korean, "UTF-8");
 
                     URL url = new URL(link);
                     URLConnection conn = url.openConnection();
@@ -291,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
         InsertData task = new InsertData();
-        task.execute(english);
+        task.execute(english,korean);
     }
 
     @Override
