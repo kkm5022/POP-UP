@@ -16,9 +16,11 @@
         android:layout_marginTop="0dp"
         android:fillViewport = "true"
         >
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center"
             android:orientation="vertical">
 
             <ImageView
@@ -36,33 +38,34 @@
 
             <TableRow
                 android:layout_width="match_parent"
-                android:layout_height="106dp">
+                android:layout_height="106dp"
+                android:layout_centerHorizontal="true">
 
                 <Button
                     android:id="@+id/detect_button"
-                    android:layout_width="107dp"
-                    android:layout_height="match_parent"
+                    android:layout_width="100dp"
+                    android:layout_height="84dp"
                     android:layout_alignParentTop="true"
                     android:layout_centerHorizontal="true"
-                    android:background="@drawable/ic_launcher_foreground"
-                    android:text="갤러리"
+                    android:layout_weight="1"
+                    android:background="@drawable/photo_37056"
                     tools:layout_editor_absoluteX="147dp"
                     tools:layout_editor_absoluteY="51dp" />
 
                 <View
                     android:id="@+id/view"
-                    android:layout_width="179dp"
-                    android:layout_height="match_parent" />
+                    android:layout_width="218dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
 
                 <Button
                     android:id="@+id/saveBtn"
-                    android:layout_width="107dp"
-                    android:layout_height="match_parent"
+                    android:layout_width="100dp"
+                    android:layout_height="84dp"
                     android:layout_alignParentTop="true"
                     android:layout_centerHorizontal="true"
                     android:layout_weight="1"
-                    android:background="@drawable/ic_launcher_foreground"
-                    android:text="사전"
+                    android:background="@drawable/dictionary_letters_a_22352"
                     tools:layout_editor_absoluteX="147dp"
                     tools:layout_editor_absoluteY="51dp" />
             </TableRow>

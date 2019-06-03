@@ -1,6 +1,8 @@
 package com.example.stacks;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -10,6 +12,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -66,6 +69,7 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 
@@ -91,14 +95,19 @@ public class MainActivity extends AppCompatActivity {
     String imagePATH;
     File savefile;
     private static final String API_KEY = "AIzaSyAZKcZ0yPJOj_vQxZDTaapBizy8SJBhqK8";
-
-
+    private static int ONE_MINUTE = 5626;
+    Intent intent;
+    String HOEWON_ID;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        intent = getIntent();
+        HOEWON_ID = intent.getStringExtra("id");
+        //알람 호출
+        new AlarmHATT(getApplicationContext()).Alarm();
         //강제적 외부 데이터베이스 접근 허용
         if(android.os.Build.VERSION.SDK_INT>9){
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
@@ -274,6 +283,72 @@ public class MainActivity extends AppCompatActivity {
         task.execute(english,korean);
     }
 
+    private void insertToDatabase2(String HOEWON_ID, String PHOTO_ID, String PHOTO_DATE, String SAVE_PATH, String INPUT_ID, String INPUT_DATE){
+        class InsertData extends AsyncTask<String, Void, String>{
+            ProgressDialog loading;
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                loading = ProgressDialog.show(MainActivity.this, "Please Wait", null, true, true);
+            }
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                loading.dismiss();
+            }
+            @Override
+            protected String doInBackground(String... params) {
+                try{
+                    String HOEWON_ID = (String)params[0];
+                    String PHOTO_ID = (String)params[1];
+                    String PHOTO_PATH= (String)params[2];
+                    String SAVE_PATH= (String)params[3];
+                    String INPUT_ID = (String)params[4];
+                    String INPUT_DATE = (String)params[5];
+
+                    String link=SERVER_ADDRESS+"/insert2.php";
+
+                    String data  = URLEncoder.encode("HOEWON_ID", "UTF-8") + "=" + URLEncoder.encode(HOEWON_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("PHOTO_ID", "UTF-8") + "=" + URLEncoder.encode(PHOTO_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("PHOTO_DATE", "UTF-8") + "=" + URLEncoder.encode(PHOTO_PATH, "UTF-8");
+                    data += "&" + URLEncoder.encode("SAVE_PATH", "UTF-8") + "=" + URLEncoder.encode(SAVE_PATH, "UTF-8");
+                    data += "&" + URLEncoder.encode("INPUT_ID", "UTF-8") + "=" + URLEncoder.encode(INPUT_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("INPUT_DATE", "UTF-8") + "=" + URLEncoder.encode(INPUT_DATE, "UTF-8");
+
+                    URL url = new URL(link);
+                    URLConnection conn = url.openConnection();
+
+                    conn.setDoOutput(true);
+                    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+                    wr.write( data );
+                    wr.flush();
+
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+                    StringBuilder sb = new StringBuilder();
+
+                    String line = null;
+
+                    // Read Server Response
+
+                    while((line = reader.readLine()) != null)
+                    {
+                        sb.append(line);
+                        break;
+                    }
+                    return sb.toString();
+                }
+
+                catch(Exception e){
+                    return new String("Exception: " + e.getMessage());
+                }
+            }
+
+        }
+        InsertData task = new InsertData();
+        task.execute(HOEWON_ID, PHOTO_ID, PHOTO_DATE,  SAVE_PATH, INPUT_ID,  INPUT_DATE);
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -314,8 +389,28 @@ public class MainActivity extends AppCompatActivity {
         return filePath;
     }
 
+    private void showExif(ExifInterface exif) {
+        String date = exif.getAttribute(ExifInterface.TAG_DATETIME);
+        if(date == null)
+            date   = new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
+        String filename = imagePATH.substring(imagePATH.lastIndexOf("/")+1);
 
-    @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+        insertToDatabase2(HOEWON_ID,filename,date,imagePATH,HOEWON_ID,new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()).toString());
+//        myAttribute += getTagString(ExifInterface.TAG_FLASH, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_GPS_LATITUDE, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_GPS_LATITUDE_REF, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_GPS_LONGITUDE, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_GPS_LONGITUDE_REF, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_IMAGE_LENGTH, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_IMAGE_WIDTH, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_MAKE, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_MODEL, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_ORIENTATION, exif);
+//        myAttribute += getTagString(ExifInterface.TAG_WHITE_BALANCE, exif);
+
+    }
+
+        @RequiresApi(api = Build.VERSION_CODES.KITKAT)
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -334,6 +429,14 @@ public class MainActivity extends AppCompatActivity {
                     ivSelectedImage.setImageBitmap(BitmapFactory.decodeStream(imageStream));
                     //uploadImageTos3(selectedImageUri);
                     imagePATH =selectedImagePath;
+
+                    try {
+                        ExifInterface exif = new ExifInterface(imagePATH);
+                        showExif(exif);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        Toast.makeText(this, "Error!", Toast.LENGTH_LONG).show();
+                    }
                 }
 
             }
@@ -358,7 +461,6 @@ public class MainActivity extends AppCompatActivity {
 
             DetectTextTask task = new DetectTextTask();
             task.execute(image);
-            Toast.makeText(this, "검출될 파일생성: "+file.getName() , Toast.LENGTH_LONG).show();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -369,6 +471,7 @@ public class MainActivity extends AppCompatActivity {
 
     //Rekognition 연동
     private class DetectTextTask extends AsyncTask<Image, Void, List<TextDetection>> {
+        ProgressDialog loading;
         @Override
         protected List<TextDetection> doInBackground(Image... params) {
             // Amazon Cognito 인증 공급자를 초기화합니다
@@ -386,23 +489,23 @@ public class MainActivity extends AppCompatActivity {
 
             return result.getTextDetections();
         }
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            loading = ProgressDialog.show(MainActivity.this, "Please Wait", null, true, true);
+        }
 
         //결과값 string 생성
         @Override
         protected void onPostExecute(List<TextDetection> textDetections) {
             super.onPostExecute(textDetections);
+            loading.dismiss();
+
             List<String> detectedTextList = new ArrayList<>();
             String resultstr = "";
             for (TextDetection text : textDetections) {
                 resultstr = text.getDetectedText() + "\n";
-                //resultstr += "Height : " + text
-                //
-                // .getGeometry().getBoundingBox().getHeight() + "\n";
-                //resultstr += "Width : " + text.getGeometry().getBoundingBox().getWidth() + "\n";
-                //resultstr += "Top : " + text.getGeometry().getBoundingBox().getTop() + "\n";
-                //resultstr += "Left : " + text.getGeometry().getBoundingBox().getLeft() + "\n";
                 detectedTextList.add(resultstr);
-                //makeFile(resultstr);
             }
             arrayAdapter = new ArrayAdapter<>(getApplicationContext(), android.R.layout.simple_list_item_1, detectedTextList);
             detectedTextListView.setAdapter(arrayAdapter);
@@ -417,7 +520,6 @@ public class MainActivity extends AppCompatActivity {
         // 일치하는 폴더가 없으면 생성
         if( !file.exists() ) {
             file.mkdirs();
-            Toast.makeText(this, "Success", Toast.LENGTH_SHORT).show();
         }
         // txt 파일 생성
         String testStr = resultstr;
@@ -479,37 +581,24 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //s3 연동
-//    private class S3IntentTask extends AsyncTask<String, Void, Void> {
-//        s3 congnition 인증
-//        @Override
-//        protected Void doInBackground(String... params) {
-//            CognitoCachingCredentialsProvider credentialsProvider = new CognitoCachingCredentialsProvider(
-//                    getApplicationContext(),
-//                    "ap-northeast-2:30127133-ced9-44d4-9267-ff3813fb686c", // 자격 증명 풀 ID,
-//                    Regions.AP_NORTHEAST_2
-//            );
-//            버켓에 업로드
-//            AmazonS3Client s3Client = new AmazonS3Client(credentialsProvider);
-//            File fileToUpload = new File(params[0]);
-//            PutObjectRequest putRequest = new PutObjectRequest("proj5022", savefile.getName(),
-//                    savefile);
-//            PutObjectResult putResponse = s3Client.putObject(putRequest);
-//
-//            GetObjectRequest getRequest = new GetObjectRequest("proj5022", savefile.getName());
-//            com.amazonaws.services.s3.model.S3Object getResponse = s3Client.getObject(getRequest);
-//            InputStream myObjectBytes = getResponse.getObjectContent();
-//
-//            try {
-//                myObjectBytes.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//
-//            return null;
-//        }
-//
-//    }
+    private class AlarmHATT{
+        private Context context;
+        public AlarmHATT(Context context){
+            this.context = context;
+        }
+        public void Alarm() {
+            AlarmManager am = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(MainActivity.this, BroadcastD.class);
+            PendingIntent sender = PendingIntent.getBroadcast(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            Calendar calendar = Calendar.getInstance();
+            //알람시간 calendar에 set해주기
+            calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE), 14, 58
+                    , 0);
+            //알람 예약
+            am.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), sender);
+        }
+
+    }
     private class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
         private SurfaceHolder mHolder;
 
