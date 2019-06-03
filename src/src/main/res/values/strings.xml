@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">STACKs</string>
+    // 카카오 앱 키
+    <string name="kakao_app_key">c9976b4846836ba350d9838a84ed24a9</string>
+</resources>
