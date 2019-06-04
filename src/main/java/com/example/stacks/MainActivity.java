@@ -18,6 +18,7 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.StrictMode;
+import android.os.SystemClock;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.RequiresApi;
@@ -98,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
     private static int ONE_MINUTE = 5626;
     Intent intent;
     String HOEWON_ID;
+    String filename;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -148,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
                 builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        insertToDatabase(selected_item.trim(), translation.getTranslatedText());
+                        insertToDatabase(HOEWON_ID,filename,selected_item.trim(), translation.getTranslatedText(),HOEWON_ID,new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()).toString());
                     }
                 });
                 builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
@@ -218,13 +220,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View v) {
                     Intent intent = new Intent(MainActivity.this, DictionaryActivity.class);
+                    intent.putExtra("HOEWON_ID",HOEWON_ID);
                     startActivity(intent);
                 }
             });
 
         }
     }
-    private void insertToDatabase(String english, String korean){
+    private void insertToDatabase(String HOEWON_ID, String PHOTO_ID, String ENGLISH, String KOREAN, String INPUT_ID, String INPUT_DATE){
         class InsertData extends AsyncTask<String, Void, String>{
             ProgressDialog loading;
             @Override
@@ -241,13 +244,21 @@ public class MainActivity extends AppCompatActivity {
             @Override
             protected String doInBackground(String... params) {
                 try{
-                    String english = (String)params[0];
-                    String korean = (String)params[1];
+                    String HOEWON_ID = (String)params[0];
+                    String PHOTO_ID = (String)params[1];
+                    String ENGLISH = (String)params[2];
+                    String KOREAN = (String)params[3];
+                    String INPUT_ID = (String)params[4];
+                    String INPUT_DATE = (String)params[5];
 
-                    String link=SERVER_ADDRESS+"/insert.php";
+                    String link=SERVER_ADDRESS+"/insert4.php";
 
-                    String data  = URLEncoder.encode("english", "UTF-8") + "=" + URLEncoder.encode(english, "UTF-8");
-                    data += "&" + URLEncoder.encode("korean", "UTF-8") + "=" + URLEncoder.encode(korean, "UTF-8");
+                    String data  = URLEncoder.encode("HOEWON_ID", "UTF-8") + "=" + URLEncoder.encode(HOEWON_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("PHOTO_ID", "UTF-8") + "=" + URLEncoder.encode(PHOTO_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("ENGLISH", "UTF-8") + "=" + URLEncoder.encode(ENGLISH, "UTF-8");
+                    data += "&" + URLEncoder.encode("KOREAN", "UTF-8") + "=" + URLEncoder.encode(KOREAN, "UTF-8");
+                    data += "&" + URLEncoder.encode("INPUT_ID", "UTF-8") + "=" + URLEncoder.encode(INPUT_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("INPUT_DATE", "UTF-8") + "=" + URLEncoder.encode(INPUT_DATE, "UTF-8");
 
                     URL url = new URL(link);
                     URLConnection conn = url.openConnection();
@@ -280,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
         }
         InsertData task = new InsertData();
-        task.execute(english,korean);
+        task.execute(HOEWON_ID,PHOTO_ID,ENGLISH,KOREAN,INPUT_ID,INPUT_DATE);
     }
 
     private void insertToDatabase2(String HOEWON_ID, String PHOTO_ID, String PHOTO_DATE, String SAVE_PATH, String INPUT_ID, String INPUT_DATE){
@@ -393,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
         String date = exif.getAttribute(ExifInterface.TAG_DATETIME);
         if(date == null)
             date   = new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date());
-        String filename = imagePATH.substring(imagePATH.lastIndexOf("/")+1);
+        filename = imagePATH.substring(imagePATH.lastIndexOf("/")+1);
 
         insertToDatabase2(HOEWON_ID,filename,date,imagePATH,HOEWON_ID,new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()).toString());
 //        myAttribute += getTagString(ExifInterface.TAG_FLASH, exif);
@@ -589,13 +600,16 @@ public class MainActivity extends AppCompatActivity {
         public void Alarm() {
             AlarmManager am = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
             Intent intent = new Intent(MainActivity.this, BroadcastD.class);
+            intent.putExtra("HOEWON_ID",HOEWON_ID);
             PendingIntent sender = PendingIntent.getBroadcast(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
             Calendar calendar = Calendar.getInstance();
             //알람시간 calendar에 set해주기
-            calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE), 14, 58
-                    , 0);
+            calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE), 16, 47, 0);
             //알람 예약
             am.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), sender);
+            am.setRepeating
+                    (AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 1000, 60000, sender);
+
         }
 
     }

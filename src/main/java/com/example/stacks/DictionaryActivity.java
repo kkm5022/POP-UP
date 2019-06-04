@@ -3,6 +3,7 @@ package com.example.stacks;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
@@ -21,6 +22,7 @@ import org.json.simple.parser.ParseException;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -31,15 +33,17 @@ public class DictionaryActivity extends Activity {
     private ArrayList<String> Items;
     private ArrayAdapter<String> adapter;
     private JSONArray mArray;
-
+    String HOEWON_ID;
+    Intent intent;
     @Override
     public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
+        intent = getIntent();
+        HOEWON_ID = intent.getStringExtra("HOEWON_ID");
         setContentView(R.layout.dictionary);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        selectToDatabase();
-
+        selectToDatabase(HOEWON_ID);
         listView = (ListView) findViewById(R.id.ListView);
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -72,7 +76,7 @@ public class DictionaryActivity extends Activity {
     }
 
 
-    private void selectToDatabase() {
+    private void selectToDatabase(String HOEWON_ID) {
         class selectData extends AsyncTask<String, Void, String> {
             ProgressDialog loading;
             String target;
@@ -110,10 +114,22 @@ public class DictionaryActivity extends Activity {
             @Override
             protected String doInBackground(String... params) {
                 try {
+                    String HOEWON_ID = (String)params[0];
+                    String postData = "HOEWON_ID=" +HOEWON_ID;
                     URL url = new URL(target);//URL 객체 생성
-
                     //URL을 이용해서 웹페이지에 연결하는 부분
                     HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+                    httpURLConnection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                    httpURLConnection.setRequestMethod("POST");
+                    httpURLConnection.setConnectTimeout(5000);
+                    httpURLConnection.setDoOutput(true);
+                    httpURLConnection.setDoInput(true);
+
+                    OutputStream outputStream
+                            = httpURLConnection.getOutputStream();
+                    outputStream.write(postData.getBytes("UTF-8"));
+                    outputStream.flush();
+                    outputStream.close();
 
                     //바이트단위 입력스트림 생성 소스는 httpURLConnection
                     InputStream inputStream = httpURLConnection.getInputStream();
@@ -121,6 +137,7 @@ public class DictionaryActivity extends Activity {
                     //웹페이지 출력물을 버퍼로 받음 버퍼로 하면 속도가 더 빨라짐
                     BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
                     String temp;
+
 
                     //문자열 처리를 더 빠르게 하기 위해 StringBuilder클래스를 사용함
                     StringBuilder stringBuilder = new StringBuilder();
@@ -144,6 +161,6 @@ public class DictionaryActivity extends Activity {
             }
         }
         selectData task = new selectData();
-        task.execute();
+        task.execute(HOEWON_ID);
     }
 }
