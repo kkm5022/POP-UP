@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -23,8 +24,11 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 
 public class DictionaryActivity extends Activity {
@@ -52,18 +56,21 @@ public class DictionaryActivity extends Activity {
                 int check_position = listView.getCheckedItemPosition();   //리스트뷰의 포지션을 가져옴.
                 final String selected_item = (String)adapterView.getAdapter().getItem(position);  //리스트뷰의 포지션 내용을 가져옴.
                 AlertDialog.Builder builder = new AlertDialog.Builder(DictionaryActivity.this);
-                builder.setTitle(selected_item + "를 삭제하시겠습니까?");
+                builder.setTitle(selected_item.substring("영어 : ".length(),selected_item.indexOf("한국어")) + "를 삭제하시겠습니까?");
                 builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getApplicationContext(), "아직 안만들었엉~!", Toast.LENGTH_SHORT).show();
+                        deleteToDatabase(HOEWON_ID.trim(),selected_item.substring("영어 :".length(),selected_item.indexOf("한국어")).trim());
+                        Log.e("EEEEE",HOEWON_ID.trim()+selected_item.substring("영어 :".length(),selected_item.indexOf("한국어")).trim());
+                        Toast.makeText(getApplicationContext(), "단어를 삭제합니다.", Toast.LENGTH_SHORT).show();
+                        selectToDatabase(HOEWON_ID);
 
                     }
                 });
                 builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(getApplicationContext(), "NO Button Click", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getApplicationContext(), "취소합니다.", Toast.LENGTH_SHORT).show();
 
                     }
                 });
@@ -99,7 +106,7 @@ public class DictionaryActivity extends Activity {
                     JSONArray ja = (JSONArray)jsonObj.get("response");
                     for(int i=0; i<ja.size(); i++) {
                         JSONObject jo = (JSONObject)ja.get(i);
-                        Items.add("영어 : "+jo.get("english")+"   한국어:"+ jo.get("korean"));
+                        Items.add("영어 : "+jo.get("english")+"   한국어: "+ jo.get("korean"));
                     }
 
                 }catch(ParseException e){
@@ -163,4 +170,63 @@ public class DictionaryActivity extends Activity {
         selectData task = new selectData();
         task.execute(HOEWON_ID);
     }
+
+    private void deleteToDatabase(String HOEWON_ID, String ENGLISH){
+        class deleteData extends AsyncTask<String, Void, String>{
+            ProgressDialog loading;
+            @Override
+            protected void onPreExecute() {
+                super.onPreExecute();
+                loading = ProgressDialog.show(DictionaryActivity.this, "Please Wait", null, true, true);
+            }
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
+                loading.dismiss();
+            }
+            @Override
+            protected String doInBackground(String... params) {
+                try{
+                    String HOEWON_ID = (String)params[0];
+                    String ENGLISH = (String)params[1];
+
+                    String link=SERVER_ADDRESS+"/delete.php";
+
+                    String data  = URLEncoder.encode("HOEWON_ID", "UTF-8") + "=" + URLEncoder.encode(HOEWON_ID, "UTF-8");
+                    data += "&" + URLEncoder.encode("ENGLISH", "UTF-8") + "=" + URLEncoder.encode(ENGLISH, "UTF-8");
+                    Log.e("EEEEE",data);
+                    URL url = new URL(link);
+                    URLConnection conn = url.openConnection();
+
+                    conn.setDoOutput(true);
+                    OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+                    wr.write( data );
+                    wr.flush();
+
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+                    StringBuilder sb = new StringBuilder();
+
+                    String line = null;
+
+                    // Read Server Response
+
+                    while((line = reader.readLine()) != null)
+                    {
+                        sb.append(line);
+                        break;
+                    }
+                    return sb.toString();
+                }
+
+                catch(Exception e){
+                    return new String("Exception: " + e.getMessage());
+                }
+            }
+
+        }
+        deleteData task = new deleteData();
+        task.execute(HOEWON_ID, ENGLISH);
+    }
+
 }

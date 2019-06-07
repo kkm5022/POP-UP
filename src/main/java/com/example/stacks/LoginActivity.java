@@ -166,7 +166,6 @@ public class LoginActivity extends AppCompatActivity {
 
         }
 
-
     }
 
     private void insertToDatabase(String id, String name,String age_range,String sex_cd,String email,String date){

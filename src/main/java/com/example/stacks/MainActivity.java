@@ -13,10 +13,13 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.media.ExifInterface;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.os.StrictMode;
 import android.os.SystemClock;
 import android.provider.DocumentsContract;
@@ -73,6 +76,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import static android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK;
+
 
 public class MainActivity extends AppCompatActivity {
     private static final int SELECT_PICTURE = 1;
@@ -100,9 +105,12 @@ public class MainActivity extends AppCompatActivity {
     Intent intent;
     String HOEWON_ID;
     String filename;
+    Context mcontext;
+private  static PowerManager.WakeLock sCpuWakeLock;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -150,7 +158,11 @@ public class MainActivity extends AppCompatActivity {
                 builder.setPositiveButton("YES", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        insertToDatabase(HOEWON_ID,filename,selected_item.trim(), translation.getTranslatedText(),HOEWON_ID,new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()).toString());
+                        if (Get_Internet(MainActivity.this) != 0) {
+                            insertToDatabase(HOEWON_ID, filename, selected_item.trim(), translation.getTranslatedText(), HOEWON_ID, new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()).toString());
+                        }else{
+                            Toast.makeText(getApplicationContext(), "네트워크를 연결해 주세요 :(", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
                 builder.setNegativeButton("NO", new DialogInterface.OnClickListener() {
@@ -201,7 +213,8 @@ public class MainActivity extends AppCompatActivity {
                                                         Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, outUri));
                                             }
                                             Toast.makeText(getApplicationContext(),"카메라로 찍은 사진을 앨범에 저장했습니다.",Toast.LENGTH_SHORT).show();
-                                            camera.startPreview();
+                                            camera.stopPreview();
+
                                         } catch (Exception e) {
                                             Log.e("SampleCapture", "Failed to insert image", e);
                                         }
@@ -219,9 +232,14 @@ public class MainActivity extends AppCompatActivity {
             saveBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(MainActivity.this, DictionaryActivity.class);
-                    intent.putExtra("HOEWON_ID",HOEWON_ID);
-                    startActivity(intent);
+                    if (Get_Internet(MainActivity.this) != 0) {
+
+                        Intent intent = new Intent(MainActivity.this, DictionaryActivity.class);
+                        intent.putExtra("HOEWON_ID", HOEWON_ID);
+                        startActivity(intent);
+                    }else{
+                        Toast.makeText(getApplicationContext(),"네트워크 연결을 해주세요 :(",Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
@@ -430,23 +448,28 @@ public class MainActivity extends AppCompatActivity {
                 Uri selectedImageUri = data.getData();
                 String selectedImagePath = getPath(selectedImageUri);
                 if (selectedImagePath != null) {
-                    detectText(selectedImagePath);
-                    InputStream imageStream = null;
-                    try {
-                        imageStream = getContentResolver().openInputStream(selectedImageUri);
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    ivSelectedImage.setImageBitmap(BitmapFactory.decodeStream(imageStream));
-                    //uploadImageTos3(selectedImageUri);
-                    imagePATH =selectedImagePath;
+                    if (Get_Internet(MainActivity.this) != 0) {
+                        detectText(selectedImagePath);
+                        InputStream imageStream = null;
+                        try {
+                            imageStream = getContentResolver().openInputStream(selectedImageUri);
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                        ivSelectedImage.setImageBitmap(BitmapFactory.decodeStream(imageStream));
+                        //uploadImageTos3(selectedImageUri);
+                        imagePATH = selectedImagePath;
 
-                    try {
-                        ExifInterface exif = new ExifInterface(imagePATH);
-                        showExif(exif);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        Toast.makeText(this, "Error!", Toast.LENGTH_LONG).show();
+                        try {
+                            ExifInterface exif = new ExifInterface(imagePATH);
+                            showExif(exif);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            Toast.makeText(this, "Error!", Toast.LENGTH_LONG).show();
+                        }
+                    }
+                    else{
+                        Toast.makeText(this, "네트워크를 연결해주세요 :(", Toast.LENGTH_LONG).show();
                     }
                 }
 
@@ -525,6 +548,20 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public static int Get_Internet(Context context)
+    {
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        if (activeNetwork != null) {
+            if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+                return 1;
+            } else if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+                return 2;
+            }
+        }
+        return 0;
+    }
+
     private void makeFile(String resultstr){
         String dirPath = getFilesDir().getAbsolutePath();
         File file = new File(dirPath);
@@ -599,6 +636,14 @@ public class MainActivity extends AppCompatActivity {
         }
         public void Alarm() {
             AlarmManager am = (AlarmManager)getSystemService(Context.ALARM_SERVICE);
+
+            PowerManager mPm;
+            PowerManager.WakeLock mWakeLock;
+            mPm = (PowerManager)getSystemService(Context.POWER_SERVICE);
+            mWakeLock = mPm.newWakeLock(SCREEN_BRIGHT_WAKE_LOCK, "myapp:tagforclassxyz");
+            mWakeLock.acquire(10000);
+
+
             Intent intent = new Intent(MainActivity.this, BroadcastD.class);
             intent.putExtra("HOEWON_ID",HOEWON_ID);
             PendingIntent sender = PendingIntent.getBroadcast(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -609,6 +654,7 @@ public class MainActivity extends AppCompatActivity {
             am.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), sender);
             am.setRepeating
                     (AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 1000, 60000, sender);
+
 
         }
 

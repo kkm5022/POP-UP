@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:keepScreenOn="true"
     tools:context=".MainActivity">
 
     <ScrollView
@@ -25,15 +26,23 @@
 
             <ImageView
                 android:id="@+id/image_selected"
-                android:layout_width="match_parent"
+                android:layout_width="15dp"
                 android:layout_height="15dp"
                 app:srcCompat="@mipmap/aws" />
 
             <FrameLayout
                 android:id="@+id/previewFrame"
-                android:layout_width="match_parent"
+                android:layout_width="370dp"
                 android:layout_height="478dp">
 
+                <ImageView
+                    android:id="@+id/imageView3"
+                    android:layout_width="240dp"
+                    android:layout_height="79dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:contentDescription="TODO"
+                    app:srcCompat="@drawable/camera_icon"
+                    tools:visibility="visible" />
             </FrameLayout>
 
             <TableRow
@@ -73,7 +82,7 @@
             <ListView
                 android:id="@+id/detectedTextListView"
                 android:layout_width="match_parent"
-                android:layout_height="921dp" />
+                android:layout_height="1865dp" />
         </LinearLayout>
     </ScrollView>
 
